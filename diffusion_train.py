@@ -8,19 +8,19 @@ from diffusers import UNet2DModel, DDPMScheduler, DDIMScheduler
 from diffusers.optimization import get_scheduler
 import numpy as np
 from tqdm.auto import tqdm
-from torchvision import transforms
 import random
 
+
 # Set random seeds for reproducibility
-
-
-def set_seed(seed=42):
+def set_seed(seed=3407):
+    os.environ['PYTHONHASHSEED'] = str(seed)
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 # Custom Conditional UNet that incorporates the class label
@@ -53,7 +53,7 @@ def train_diffusion_model(
     train_dataloader,
     val_dataloader=None,
     num_epochs=100,
-    learning_rate=1e-4,
+    learning_rate=2e-4,
     save_dir="checkpoints",
     device="cuda" if torch.cuda.is_available() else "cpu",
     patience=20  # Early stopping patience
