@@ -143,7 +143,7 @@ if __name__ == "__main__":
 
                 # Update progress bar
                 val_pbar.set_postfix({
-                    'loss': val_loss.item() / data.size(0),
+                    'loss': vq_loss.item() / data.size(0),
                 })
 
         # Calculate average validation losses
