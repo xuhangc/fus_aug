@@ -42,38 +42,38 @@ class Generator(nn.Module):
         # Embedding layer for the labels.
         self.label_embedding = nn.Sequential(
             nn.Linear(self.latent_dim + self.num_classes, 4 * 4 * 512),
-            nn.LeakyReLU(0.2, True),
+            nn.LeakyReLU(0.2, False),
         )
         # self.label_embedding = nn.Sequential(
         #     nn.Linear(self.latent_dim + self.num_classes,
         #               8 * 8 * self.latent_dim),
-        #     nn.LeakyReLU(0.2, True),
+        #     nn.LeakyReLU(0.2, False),
         # )
 
         # self.backbone = nn.Sequential(
         #     nn.ConvTranspose2d(self.latent_dim, 512, 5, bias=False),
         #     nn.BatchNorm2d(512),
-        #     nn.ReLU(True),
+        #     nn.ReLU(False),
 
         #     nn.ConvTranspose2d(512, 512, 4, bias=False),
         #     nn.BatchNorm2d(512),
-        #     nn.ReLU(True),
+        #     nn.ReLU(False),
 
         #     nn.ConvTranspose2d(512, 256, 4, bias=False),
         #     nn.BatchNorm2d(256),
-        #     nn.ReLU(True),
+        #     nn.ReLU(False),
 
         #     nn.ConvTranspose2d(256, 256, 4, bias=False),
         #     nn.BatchNorm2d(256),
-        #     nn.ReLU(True),
+        #     nn.ReLU(False),
 
         #     nn.ConvTranspose2d(256, 128, 4, bias=False),
         #     nn.BatchNorm2d(128),
-        #     nn.ReLU(True),
+        #     nn.ReLU(False),
 
         #     nn.ConvTranspose2d(128, 64, 3, bias=False),
         #     nn.BatchNorm2d(64),
-        #     nn.ReLU(True),
+        #     nn.ReLU(False),
 
         #     nn.ConvTranspose2d(64, self.channels, 4),
 
@@ -84,22 +84,22 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(512, 256, kernel_size=4,
                                stride=2, padding=1, bias=False),  # 8x8
             nn.BatchNorm2d(256),
-            nn.ReLU(True),
+            nn.ReLU(False),
 
             nn.ConvTranspose2d(256, 128, kernel_size=4,
                                stride=2, padding=1, bias=False),  # 16x16
             nn.BatchNorm2d(128),
-            nn.ReLU(True),
+            nn.ReLU(False),
 
             nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2,
                                padding=1, bias=False),   # 32x32
             nn.BatchNorm2d(64),
-            nn.ReLU(True),
+            nn.ReLU(False),
 
             nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2,
                                padding=1, bias=False),    # 64x64
             nn.BatchNorm2d(32),
-            nn.ReLU(True),
+            nn.ReLU(False),
 
             nn.ConvTranspose2d(32, self.channels, kernel_size=4,
                                stride=2, padding=1),    # 128x128
@@ -150,24 +150,24 @@ class Discriminator(nn.Module):
         self.label_embedding = nn.Sequential(
             nn.Linear(self.num_classes, int(
                 self.channels * self.image_size * self.image_size)),
-            nn.LeakyReLU(0.2, True),
+            nn.LeakyReLU(0.2, False),
         )
 
         self.backbone = nn.Sequential(
             # Input: (channels + 1, 128, 128)
             nn.Conv2d(self.channels + 1, 64, 3, stride=2, padding=1),  # 64x64
-            nn.LeakyReLU(0.2, True),
+            nn.LeakyReLU(0.2, False),
 
             nn.Conv2d(64, 128, 3, stride=2, padding=1),  # 32x32
-            nn.LeakyReLU(0.2, True),
+            nn.LeakyReLU(0.2, False),
             nn.MaxPool2d(2),  # 16x16
 
             nn.Conv2d(128, 256, 3, stride=2, padding=1),  # 8x8
-            nn.LeakyReLU(0.2, True),
+            nn.LeakyReLU(0.2, False),
             nn.MaxPool2d(2),  # 4x4
 
             nn.Conv2d(256, 512, 3, stride=1, padding=1),  # 4x4
-            nn.LeakyReLU(0.2, True),
+            nn.LeakyReLU(0.2, False),
 
             nn.Conv2d(512, self.channels, 4, stride=1, padding=0),  # 1x1
         )
@@ -185,7 +185,7 @@ class Discriminator(nn.Module):
 
         # One-hot encode labels and pass through embedding
         # [[Fix: Add one-hot encoding]]
-        labels = F.one_hot(labels, num_classes=self.num_classes).float()
+        labels = F.one_hot(labels.flatten(), num_classes=self.num_classes).float()
         label_embedding = self.label_embedding(
             labels).reshape(-1, self.channels, self.image_size, self.image_size)
 
