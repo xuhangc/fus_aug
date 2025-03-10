@@ -194,13 +194,13 @@ if __name__ == "__main__":
     # Train the model
     print("Starting model training...")
 
-    model = CVAE().to(device)
+    VAE = CVAE().to(device)
 
     learning_rate = 2e-4
     num_epochs = 200
 
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=learning_rate, weight_decay=1e-5)
+        VAE.parameters(), lr=learning_rate, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(
         optimizer, num_epochs, eta_min=1e-6)
 
@@ -224,7 +224,7 @@ if __name__ == "__main__":
             kl_weight = min(1.0, (epoch - kl_start) / kl_anneal_epochs)
 
         # Training phase
-        model.train()
+        VAE.train()
         train_loss = 0
         train_recon_loss = 0
         train_kl_loss = 0
@@ -240,7 +240,7 @@ if __name__ == "__main__":
             optimizer.zero_grad()
 
             # Forward pass
-            recon_data, mu, log_var, z = model(data, labels)
+            recon_data, mu, log_var, z = VAE(data, labels)
 
             # Calculate loss
             loss, recon_loss, kl_loss = vae_loss_function(
@@ -268,7 +268,7 @@ if __name__ == "__main__":
         avg_train_kl = train_kl_loss / len(train_dataset)
 
         # Validation phase
-        model.eval()
+        VAE.eval()
         val_loss = 0
         val_recon_loss = 0
         val_kl_loss = 0
@@ -281,7 +281,7 @@ if __name__ == "__main__":
                 labels = labels.to(device)
 
                 # Forward pass
-                recon_data, mu, log_var, z = model(data, labels)
+                recon_data, mu, log_var, z = VAE(data, labels)
 
                 # Calculate loss
                 loss, recon_loss, kl_loss = vae_loss_function(
@@ -322,11 +322,11 @@ if __name__ == "__main__":
             best_val_loss = avg_val_loss
             torch.save({
                 'epoch': epoch,
-                'model_state_dict': model.state_dict(),
+                'model_state_dict': VAE.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
                 'loss': avg_val_loss,
-            }, f'{model}/{session}_best_cvae_model.pth')
+            }, f'{VAE}/{session}_best_cvae_model.pth')
             print(
                 f"✓ Saved best model with validation loss: {avg_val_loss:.4f}")
 
@@ -334,14 +334,14 @@ if __name__ == "__main__":
         if (epoch + 1) % 10 == 0:
             torch.save({
                 'epoch': epoch,
-                'model_state_dict': model.state_dict(),
+                'model_state_dict': VAE.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
                 'loss': avg_val_loss,
-            }, f'{model}/{session}_epoch_{epoch+1}.pth')
+            }, f'{VAE}/{session}_epoch_{epoch+1}.pth')
 
             # Visualize reconstructions and generated samples
-            visualize_results(model, val_dataloader, device, epoch, kl_weight)
+            visualize_results(VAE, val_dataloader, device, epoch, kl_weight)
 
     print("Training completed!")
 
@@ -350,4 +350,4 @@ if __name__ == "__main__":
 
     # Generate samples from the trained model
     print("Generating samples from trained model...")
-    generate_samples(model, device, num_samples=10, num_classes=2)
+    generate_samples(VAE, device, num_samples=10, num_classes=2)
