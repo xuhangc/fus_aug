@@ -170,7 +170,7 @@ if __name__ == "__main__":
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
                 'loss': avg_val_loss,
-            }, f'{model}/{session}_best_cvae_model.pth')
+            }, f'{model}/{session}_best_vqvae_model.pth')
             print(
                 f"✓ Saved best model with validation loss: {avg_val_loss:.4f}")
 
