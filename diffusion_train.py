@@ -54,7 +54,7 @@ def train_diffusion_model(
     val_dataloader=None,
     num_epochs=100,
     learning_rate=2e-4,
-    save_dir="checkpoints",
+    save_dir="ddim",
     device="cuda" if torch.cuda.is_available() else "cpu",
     patience=20  # Early stopping patience
 ):
@@ -398,6 +398,9 @@ def main():
     # Set random seed for reproducibility
     set_seed(42)
 
+    session = "S1"
+    model = "ddim"
+
     # Device setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
@@ -407,8 +410,8 @@ def main():
     # Placeholder for demonstration:
     print("Loading and preparing data...")
 
-    train_dataset = NPZDataLoader('S1_train.npz')
-    val_dataset = NPZDataLoader('S1_test.npz')
+    train_dataset = NPZDataLoader(f'{session}_train.npz')
+    val_dataset = NPZDataLoader(f'{session}_test.npz')
 
     # Create data loaders
     train_dataloader = DataLoader(
@@ -425,7 +428,7 @@ def main():
         val_dataloader=val_dataloader,
         num_epochs=100,
         learning_rate=1e-4,
-        save_dir="models",
+        save_dir=session + "_" + model,
         device=device,
         patience=20
     )

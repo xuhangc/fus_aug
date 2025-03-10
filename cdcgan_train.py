@@ -25,14 +25,17 @@ if __name__ == "__main__":
     # Set random seed for reproducibility
     set_seed(42)
 
+    session = 'S1'
+    model = 'CDCGAN'
+
     # Device setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     # Load the data
     print("Loading and preparing data...")
-    train_dataset = NPZDataLoader('S1_train.npz')
-    val_dataset = NPZDataLoader('S1_test.npz')
+    train_dataset = NPZDataLoader(f'{session}_train.npz')
+    val_dataset = NPZDataLoader(f'{session}_test.npz')
 
     # Create data loaders
     train_dataloader = torch.utils.data.DataLoader(
@@ -56,8 +59,7 @@ if __name__ == "__main__":
     # Initialize the generator and discriminator
     generator = Generator(image_size=image_size, channels=channels,
                           num_classes=num_classes, latent_dim=latent_dim).to(device)
-    discriminator = Discriminator(image_size=image_size, channels=channels,
-                                  dropout=0.5, num_classes=num_classes).to(device)
+    discriminator = Discriminator(image_size=image_size, channels=channels, num_classes=num_classes).to(device)
 
     # Initialize optimizers
     optimizer_G = optim.Adam(generator.parameters(),
@@ -66,11 +68,11 @@ if __name__ == "__main__":
                              lr=lr, betas=(beta1, beta2))
 
     # Loss function
-    criterion = nn.BCELoss()
+    criterion = torch.nn.BCELoss()
 
     # Create directories for saving results
     os.makedirs("generated_images", exist_ok=True)
-    os.makedirs("saved_models", exist_ok=True)
+    os.makedirs(model, exist_ok=True)
 
     # Training loop
     print("Starting training...")
@@ -200,9 +202,9 @@ if __name__ == "__main__":
         # Save models periodically
         if (epoch + 1) % 10 == 0 or epoch == num_epochs - 1:
             torch.save(generator.state_dict(),
-                       f"saved_models/generator_epoch_{epoch+1}.pth")
+                       f"{model}/{session}_generator_epoch_{epoch+1}.pth")
             torch.save(discriminator.state_dict(),
-                       f"saved_models/discriminator_epoch_{epoch+1}.pth")
+                       f"{model}/{session}_discriminator_epoch_{epoch+1}.pth")
 
     print("Training completed!")
 
@@ -247,7 +249,7 @@ if __name__ == "__main__":
 
             plt.tight_layout()
             plt.savefig("final_generated_samples.png")
-            plt.show()
+            # plt.show()
 
     # Generate final samples
     generate_samples(generator)

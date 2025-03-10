@@ -128,7 +128,7 @@ def plot_training_curves(train_losses, val_losses):
     plt.legend()
 
     plt.tight_layout()
-    plt.savefig('checkpoints/loss_curves.png')
+    plt.savefig('loss_curves.png')
     plt.close()
 
 
@@ -161,13 +161,16 @@ def generate_samples(model, device, num_samples=10, num_classes=2):
                 ax.axis('off')
 
     plt.tight_layout()
-    plt.savefig('checkpoints/generated_samples.png')
+    plt.savefig('generated_samples.png')
     plt.close()
 
 
 if __name__ == "__main__":
     # Set random seed for reproducibility
     set_seed(42)
+
+    session = 'S1'
+    model = 'CVAE'
 
     # Device setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -177,8 +180,8 @@ if __name__ == "__main__":
     # Replace this with your actual data loading code
     print("Loading and preparing data...")
 
-    train_dataset = NPZDataLoader('S1_train.npz')
-    val_dataset = NPZDataLoader('S1_test.npz')
+    train_dataset = NPZDataLoader(f'{session}_train.npz')
+    val_dataset = NPZDataLoader(f'{session}_test.npz')
 
     # Create data loaders
     train_dataloader = DataLoader(
@@ -202,7 +205,7 @@ if __name__ == "__main__":
         optimizer, num_epochs, eta_min=1e-6)
 
     # Create directory for saving models
-    os.makedirs('checkpoints', exist_ok=True)
+    os.makedirs(model, exist_ok=True)
 
     # For tracking metrics
     train_losses = []
@@ -323,7 +326,7 @@ if __name__ == "__main__":
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
                 'loss': avg_val_loss,
-            }, 'checkpoints/best_cvae_model.pth')
+            }, f'{model}/{session}_best_cvae_model.pth')
             print(
                 f"✓ Saved best model with validation loss: {avg_val_loss:.4f}")
 
@@ -335,7 +338,7 @@ if __name__ == "__main__":
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
                 'loss': avg_val_loss,
-            }, f'checkpoints/cvae_epoch_{epoch+1}.pth')
+            }, f'{model}/{session}_epoch_{epoch+1}.pth')
 
             # Visualize reconstructions and generated samples
             visualize_results(model, val_dataloader, device, epoch, kl_weight)
