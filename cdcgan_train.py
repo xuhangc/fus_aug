@@ -25,7 +25,7 @@ if __name__ == "__main__":
     # Set random seed for reproducibility
     set_seed(42)
 
-    session = 'S1'
+    session = 'S2'
     model = 'CDCGAN'
 
     # Device setup
@@ -196,7 +196,7 @@ if __name__ == "__main__":
                         axs[1, j].set_title('Class 1')
 
                 plt.tight_layout()
-                plt.savefig(f"generated_images/epoch_{epoch+1}.png")
+                plt.savefig(f"generated_images/{session}_{model}_epoch_{epoch+1}.png")
                 plt.close()
 
         # Save models periodically
