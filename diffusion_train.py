@@ -33,11 +33,11 @@ class ConditionalUNet(nn.Module):
 
     def forward(self, x, t, class_labels):
         # Embed class labels
-        class_emb = self.class_embedding(class_labels)
-
+        
+        class_emb = self.class_embedding(class_labels.flatten())
         # Expand class embedding to match batch and spatial dimensions
         batch_size = x.shape[0]
-        class_emb = class_emb.unsqueeze(-1).unsqueeze(-1)
+        class_emb = class_emb.unsqueeze(1).unsqueeze(1)
         class_emb = class_emb.expand(batch_size, -1, x.shape[2], x.shape[3])
 
         # Concatenate the class embedding as an additional channel
@@ -75,23 +75,23 @@ def train_diffusion_model(
     model.to(device)
 
     # Create the noise scheduler
-    # noise_scheduler = DDPMScheduler(
-    #     num_train_timesteps=1000,
-    #     beta_start=0.0001,
-    #     beta_end=0.02,
-    #     beta_schedule="linear",
-    #     clip_sample=False
-    # )
-    noise_scheduler = DDIMScheduler(
+    noise_scheduler = DDPMScheduler(
         num_train_timesteps=1000,
         beta_start=0.0001,
         beta_end=0.02,
         beta_schedule="linear",
-        clip_sample=False,
-        set_alpha_to_one=False,
-        steps_offset=1,
-        prediction_type="epsilon"
+        clip_sample=False
     )
+    # noise_scheduler = DDIMScheduler(
+    #     num_train_timesteps=1000,
+    #     beta_start=0.0001,
+    #     beta_end=0.02,
+    #     beta_schedule="linear",
+    #     clip_sample=False,
+    #     set_alpha_to_one=False,
+    #     steps_offset=1,
+    #     prediction_type="epsilon"
+    # )
 
     # Create the optimizer
     optimizer = torch.optim.AdamW(
@@ -399,7 +399,7 @@ def main():
     set_seed(42)
 
     session = "S1"
-    model = "ddim"
+    model = "DDPM"
 
     # Device setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -415,8 +415,8 @@ def main():
 
     # Create data loaders
     train_dataloader = DataLoader(
-        train_dataset, batch_size=16, shuffle=True, num_workers=4)
-    val_dataloader = DataLoader(val_dataset, batch_size=16, num_workers=4)
+        train_dataset, batch_size=4, shuffle=True, num_workers=4)
+    val_dataloader = DataLoader(val_dataset, batch_size=1, num_workers=4)
 
     print(
         f"Training on {len(train_dataset)} samples, validating on {len(val_dataset)} samples")
