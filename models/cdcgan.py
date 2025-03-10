@@ -126,7 +126,7 @@ class Generator(nn.Module):
         if labels is None:
             raise ValueError(
                 "Labels must be provided for conditional generation.")
-        labels = F.one_hot(labels, num_classes=self.num_classes).float()
+        labels = F.one_hot(labels.flatten(), num_classes=self.num_classes).float()
         x = torch.cat([x, labels], 1)
         x = self.label_embedding(x).reshape(-1, 512, 4, 4)
         return self.backbone(x)
@@ -206,7 +206,7 @@ if __name__ == "__main__":
 
     # Generate random noise
     noise = torch.randn(2, 100)
-    labels = torch.randint(0, 2, (2,))
+    labels = torch.randint(0, 2, (2, 1))
     print(noise.shape, labels.shape)
 
     # Generate a fake image
