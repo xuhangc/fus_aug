@@ -341,7 +341,7 @@ if __name__ == "__main__":
             }, f'{model}/{session}_epoch_{epoch+1}.pth')
 
             # Visualize reconstructions and generated samples
-            visualize_results(VAE, val_dataloader, device, epoch, kl_weight)
+            # visualize_results(VAE, val_dataloader, device, epoch, kl_weight)
 
     print("Training completed!")
 
