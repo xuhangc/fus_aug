@@ -72,7 +72,7 @@ class Generator(nn.Module):
         Returns:
             torch.Tensor: Output tensor of shape (batch_size, channels, image_size, image_size).
         """
-        conditional_inputs = torch.cat([x, self.label_embedding(labels)], -1)
+        conditional_inputs = torch.cat([x, self.label_embedding(labels.flatten())], -1)
         x = self.backbone(conditional_inputs)
         return x.reshape(x.size(0), self.channels, self.image_size, self.image_size)
     
@@ -121,7 +121,7 @@ class Discriminator(nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, channels, image_size, image_size).
         """
         x = torch.flatten(x, 1)
-        label_embedding = self.label_embedding(labels)
+        label_embedding = self.label_embedding(labels.flatten())
         x = torch.cat([x, label_embedding], dim=-1)
         return self.backbone(x)
     
@@ -137,12 +137,12 @@ if __name__ == '__main__':
 
     # Generate random noise
     noise = torch.randn(2, 100)
-    labels = torch.randint(0, 2, (2,))
+    labels = torch.randint(0, 2, (2, 1))
     print(noise.shape, labels.shape)
 
     # Generate a fake image
     fake_image = gen(noise, labels)
-    print(fake_image.shape)
+    print(fake_image.shape, labels.shape)
 
     # Pass the fake image to the discriminator
     validity = disc(fake_image, labels)
