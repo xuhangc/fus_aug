@@ -68,7 +68,7 @@ if __name__ == "__main__":
                              lr=lr, betas=(beta1, beta2))
 
     # Loss function
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
 
     # Create directories for saving results
     os.makedirs("generated_images", exist_ok=True)
