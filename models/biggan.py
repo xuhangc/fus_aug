@@ -1,17 +1,14 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+
 
 # Spectral Normalization for stabilization
-
-
 def spectral_norm(module):
     return nn.utils.spectral_norm(module)
 
+
 # Self-Attention Block
-
-
 class SelfAttention(nn.Module):
     def __init__(self, in_dim):
         super(SelfAttention, self).__init__()
@@ -36,9 +33,8 @@ class SelfAttention(nn.Module):
         out = self.gamma * out + x
         return out
 
+
 # Conditional Batch Normalization
-
-
 class ConditionalBatchNorm2d(nn.Module):
     def __init__(self, num_features, num_classes):
         super(ConditionalBatchNorm2d, self).__init__()
@@ -57,9 +53,8 @@ class ConditionalBatchNorm2d(nn.Module):
             beta.view(-1, self.num_features, 1, 1)
         return out
 
+
 # Residual Block for Generator
-
-
 class ResBlockGenerator(nn.Module):
     def __init__(self, in_channels, out_channels, num_classes):
         super(ResBlockGenerator, self).__init__()
@@ -86,9 +81,8 @@ class ResBlockGenerator(nn.Module):
 
         return h + self.shortcut(x)
 
+
 # Residual Block for Discriminator
-
-
 class ResBlockDiscriminator(nn.Module):
     def __init__(self, in_channels, out_channels, downsample=True):
         super(ResBlockDiscriminator, self).__init__()
@@ -114,9 +108,8 @@ class ResBlockDiscriminator(nn.Module):
 
         return h + self.skip_connection(x)
 
+
 # BigGAN Generator
-
-
 class Generator(nn.Module):
     def __init__(self, z_dim=128, num_classes=1000, channel_width=128, num_attention_heads=1):
         super(Generator, self).__init__()
@@ -171,9 +164,8 @@ class Generator(nn.Module):
 
         return h
 
+
 # BigGAN Discriminator
-
-
 class Discriminator(nn.Module):
     def __init__(self, num_classes=1000, channel_width=128):
         super(Discriminator, self).__init__()
@@ -230,9 +222,8 @@ class Discriminator(nn.Module):
 
         return output
 
+
 # Complete BigGAN model
-
-
 class BigGAN(nn.Module):
     def __init__(self, z_dim=128, num_classes=1000, channel_width=128):
         super(BigGAN, self).__init__()
