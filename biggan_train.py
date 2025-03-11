@@ -110,9 +110,7 @@ if __name__ == '__main__':
 
     # Create data loaders
     train_dataloader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=16, shuffle=True, num_workers=4)
-    val_dataloader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=16, num_workers=4)
+        train_dataset, batch_size=2, shuffle=True, num_workers=16)
 
     train(train_dataloader, session)
     print('Done training.')
