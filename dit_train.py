@@ -114,8 +114,8 @@ def save_samples(model, noise_scheduler, epoch, num_samples=4, output_dir="sampl
     with torch.no_grad():
         # Get a batch from validation set
         batch = next(iter(val_dataloader))
-        clean_images = batch["image"].to(device)[:num_samples]
-        labels = batch["label"].to(device)[:num_samples]
+        clean_images = batch[0].to(device)[:num_samples]
+        labels = batch[1].to(device)[:num_samples]
 
         # Create noise and add to images
         noise = torch.randn_like(clean_images)
