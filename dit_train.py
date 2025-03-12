@@ -179,8 +179,8 @@ def train_loop():
         train_loss = 0.0
 
         for batch in train_dataloader:
-            clean_images = batch["image"]
-            labels = batch["label"]
+            clean_images = batch[0]
+            labels = batch[1]
 
             # Sample noise to add to the images
             noise = torch.randn_like(clean_images)
@@ -224,8 +224,8 @@ def train_loop():
 
         with torch.no_grad():
             for batch in val_dataloader:
-                clean_images = batch["image"]
-                labels = batch["label"]
+                clean_images = batch[0]
+                labels = batch[1]
 
                 # Sample noise to add to the images
                 noise = torch.randn_like(clean_images)
