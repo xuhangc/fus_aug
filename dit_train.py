@@ -1,27 +1,38 @@
 import os
 import torch
+import random
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
+from data import NPZDataLoader
 import numpy as np
 from diffusers import DDPMScheduler
 from diffusers.optimization import get_cosine_schedule_with_warmup
 from accelerate import Accelerator
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 from models.dit import DiT
 
 
-# Set seed for reproducibility
-torch.manual_seed(42)
-np.random.seed(42)
+def set_seed(seed=3407):
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
+
+set_seed(42)
+
+session = 'S1'
 # Device configuration
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 # Hyperparameters
-batch_size = 16
+batch_size = 4
 num_epochs = 100
 learning_rate = 1e-4
 num_train_timesteps = 1000
@@ -39,15 +50,15 @@ patch_size = 8  # Size of image patches
 
 
 # Create datasets
-train_dataset = FunctionalUltrasoundDataset(train_data, train_labels)
-val_dataset = FunctionalUltrasoundDataset(val_data, val_labels)
+train_dataset = NPZDataLoader(f'{session}_train.npz')
+val_dataset = NPZDataLoader(f'{session}_test.npz')
 
 # Create data loaders
 train_dataloader = DataLoader(
     train_dataset, batch_size=batch_size, shuffle=True, num_workers=4
 )
 val_dataloader = DataLoader(
-    val_dataset, batch_size=batch_size, shuffle=False, num_workers=4
+    val_dataset, batch_size=1, shuffle=False, num_workers=4
 )
 
 # Initialize accelerator
@@ -258,7 +269,7 @@ def train_loop():
                 unwrapped_model = accelerator.unwrap_model(model)
 
                 # Save model
-                model_path = f"./checkpoints/dit_model_epoch_{epoch}.pt"
+                model_path = f"./DiT/{session}_dit_model_epoch_{epoch}.pt"
                 os.makedirs(os.path.dirname(model_path), exist_ok=True)
                 torch.save(unwrapped_model.state_dict(), model_path)
 
@@ -325,7 +336,7 @@ if __name__ == "__main__":
     accelerator.init_trackers("diffusion_transformer_training")
 
     # Create directories
-    os.makedirs("checkpoints", exist_ok=True)
+    os.makedirs("DiT", exist_ok=True)
     os.makedirs("samples", exist_ok=True)
 
     train_loop()
