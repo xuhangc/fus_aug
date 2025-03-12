@@ -231,7 +231,7 @@ class DiT(nn.Module):
 
         # Class conditioning
         if class_labels is not None:
-            class_labels = class_labels.long().squeeze()
+            class_labels = class_labels.long().flatten()
             class_embed = self.class_embed(class_labels)
             class_embed = repeat(class_embed, 'b d -> b n d', n=x.shape[1])
             cond = time_embed + class_embed
