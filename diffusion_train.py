@@ -54,6 +54,7 @@ def train_diffusion_model(
     val_dataloader=None,
     num_epochs=100,
     learning_rate=2e-4,
+    session="DDPM",
     save_dir="ddim",
     device="cuda" if torch.cuda.is_available() else "cpu",
     patience=20  # Early stopping patience
@@ -75,23 +76,25 @@ def train_diffusion_model(
     model.to(device)
 
     # Create the noise scheduler
-    # noise_scheduler = DDPMScheduler(
-    #     num_train_timesteps=1000,
-    #     beta_start=0.0001,
-    #     beta_end=0.02,
-    #     beta_schedule="linear",
-    #     clip_sample=False
-    # )
-    noise_scheduler = DDIMScheduler(
-        num_train_timesteps=1000,
-        beta_start=0.0001,
-        beta_end=0.02,
-        beta_schedule="linear",
-        clip_sample=False,
-        set_alpha_to_one=False,
-        steps_offset=1,
-        prediction_type="epsilon"
-    )
+    if session == 'DDPM':
+        noise_scheduler = DDPMScheduler(
+            num_train_timesteps=1000,
+            beta_start=0.0001,
+            beta_end=0.02,
+            beta_schedule="linear",
+            clip_sample=False
+        )
+    else:
+        noise_scheduler = DDIMScheduler(
+            num_train_timesteps=1000,
+            beta_start=0.0001,
+            beta_end=0.02,
+            beta_schedule="linear",
+            clip_sample=False,
+            set_alpha_to_one=False,
+            steps_offset=1,
+            prediction_type="epsilon"
+        )
 
     # Create the optimizer
     optimizer = torch.optim.AdamW(
@@ -398,8 +401,8 @@ def main():
     # Set random seed for reproducibility
     set_seed(42)
 
-    session = "S2"
-    model = "DDIM"
+    session = "S1"
+    model = "DDPM"
 
     # Device setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -428,6 +431,7 @@ def main():
         val_dataloader=val_dataloader,
         num_epochs=100,
         learning_rate=1e-4,
+        session=model,
         save_dir=session + "_" + model,
         device=device,
         patience=20
