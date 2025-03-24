@@ -1,197 +1,109 @@
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import os
-import torch.nn.functional as F
-from models.vqvae import ClassConditionalVQVAE
 import torch
+import torch.nn.functional as F
+from torchvision.utils import make_grid
+import os
+import matplotlib.pyplot as plt
 from data import NPZDataLoader
-from torch.utils.data import DataLoader
-import torch.optim as optim
-import random
-import numpy as np
+from tqdm import tqdm
 
+from models.vqvae import VQVAE, VQVAEConfig
 
-# Set random seeds for reproducibility
-def set_seed(seed=3407):
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+def plot_images(pred, original=None):
+    n = pred.size(0)
+    pred = pred * 0.5 + 0.5
+    pred = pred.clamp(0, 1)
+    img = pred.cpu().detach()
 
+    if original is not None:
+        original = original * 0.5 + 0.5
+        original = original.clamp(0, 1)
+        original = original.cpu().detach()
+        img = torch.cat([original, img], dim=0)
 
-# Define the loss function for VAE
-
-def vae_loss_function(recon_x, x, mu, log_var, kl_weight=1.0):
-    """
-    Calculate VAE loss with KL annealing
-    """
-    # Flatten input and reconstruction for loss calculation
-    x_flat = x.view(x.size(0), -1)
-    recon_x_flat = recon_x.view(recon_x.size(0), -1)
-
-    # Reconstruction loss (using binary cross entropy)
-    BCE = F.binary_cross_entropy(recon_x_flat, x_flat, reduction='sum')
-
-    # KL-divergence
-    KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
-
-    # Total loss with KL weight
-    return BCE + kl_weight * KLD, BCE, KLD
+    img_grid = make_grid(img, nrow=n)
+    img_grid = img_grid.permute(1, 2, 0).numpy()
+    img_grid = (img_grid * 255).astype("uint8")
+    plt.imshow(img_grid)
+    plt.axis("off")
 
 
 if __name__ == "__main__":
-    # Set random seed for reproducibility
-    set_seed(42)
+    session = "S1"
 
-    session = 'S1'
-    model = 'VQVAE'
+    model_name = "VQVAE"
+    os.makedirs(model_name, exist_ok=True)
 
-    # Device setup
+    patch_sizes = [1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 32]
+    
+    max_len = sum(p**2 for p in patch_sizes)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
 
-    # Load your functional ultrasound data here
-    # Replace this with your actual data loading code
-    print("Loading and preparing data...")
+    config = VQVAEConfig(
+        resolution=128,
+        in_channels=1,
+        dim=128,
+        ch_mult=[1, 2, 4],
+        num_res_blocks=2,
+        z_channels=64,
+        out_ch=1,
+        vocab_size=8192,
+        patch_sizes=patch_sizes,
+    )
+
+    vq_model = VQVAE(config)
+    optimizer = torch.optim.AdamW(vq_model.parameters(), lr=3e-4)
 
     train_dataset = NPZDataLoader(f'{session}_train.npz')
-    val_dataset = NPZDataLoader(f'{session}_test.npz')
+    test_dataset = NPZDataLoader(f'{session}_test.npz')
 
-    # Create data loaders
-    train_dataloader = DataLoader(
-        train_dataset, batch_size=16, shuffle=True, num_workers=4)
-    val_dataloader = DataLoader(val_dataset, batch_size=16, num_workers=4)
-
-    print(
-        f"Training on {len(train_dataset)} samples, validating on {len(val_dataset)} samples")
-
-    # Train the model
-    print("Starting model training...")
-
-    VAE = ClassConditionalVQVAE().to(device)
-
-    learning_rate = 2e-4
-    num_epochs = 200
-
-    optimizer = torch.optim.AdamW(
-        VAE.parameters(), lr=learning_rate, weight_decay=1e-5)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, num_epochs, eta_min=1e-6)
-
-    # Create directory for saving models
-    os.makedirs(model, exist_ok=True)
-
-    # For tracking metrics
-    train_losses = []
-    val_losses = []
-    best_val_loss = float('inf')
-
-    # Main training loop
-    for epoch in range(num_epochs):
-
-        # Training phase
-        VAE.train()
-        train_loss = 0
-        # Use tqdm for progress bar
-        train_pbar = tqdm(train_dataloader,
-                          desc=f"Epoch {epoch+1}/{num_epochs} [Train]")
-        for data, labels in train_pbar:
-            data = data.to(device)
-            labels = labels.to(device)
-
-            # Zero gradients
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=2, shuffle=True, num_workers=16)
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=1, shuffle=False, num_workers=16)
+    
+    vq_model = vq_model.to(device)
+    for epoch in range(100):
+        epoch_loss = 0
+        epoch_recon_loss = 0
+        for i, (x, c) in enumerate(tqdm(train_loader)):
+            x, c = x.to(device), c.to(device).flatten()
             optimizer.zero_grad()
-
-            # Forward pass
-            x_recon, vq_loss, indices = VAE(data, labels)
-
-            # Backward pass and optimize
-            vq_loss.backward()
+            xhat, r_maps, idxs, scales, q_loss = vq_model(x)
+            recon_loss = F.mse_loss(xhat, x)
+            loss = recon_loss + q_loss
+            loss.backward()
             optimizer.step()
+            epoch_loss += loss.item()
+            epoch_recon_loss += recon_loss.item()
 
-            # Accumulate losses
-            train_loss += vq_loss.item()
+        epoch_loss /= len(train_loader)
+        epoch_recon_loss /= len(train_loader)
+        print(f"Epoch: {epoch}, Loss: {epoch_loss}, Recon Loss: {epoch_recon_loss}")
+        torch.save(vq_model.state_dict(), f"{model_name}/{session}_{epoch}_vqvae.pth")
 
-            # Update progress bar
-            train_pbar.set_postfix({
-                'loss': vq_loss.item() / data.size(0),
-            })
+        if epoch % 5 == 0:
+            with torch.no_grad():
+                total_loss = 0
+                total_recon_loss = 0
+                for i, (x, c) in enumerate(tqdm(test_loader)):
+                    x, c = x.to(device), c.to(device)
+                    xhat, r_maps, idxs, scales, q_loss = vq_model(x)
+                    recon_loss = F.mse_loss(xhat, x)
+                    loss = recon_loss + q_loss
+                    total_loss += loss.item()
+                    total_recon_loss += recon_loss.item()
 
-        # Calculate average training losses
-        avg_train_loss = train_loss / len(train_dataset)
+                total_loss /= len(test_loader)
+                total_recon_loss /= len(test_loader)
 
-        # Validation phase
-        VAE.eval()
-        val_loss = 0
+                print(f"Epoch: {epoch}, Test Loss: {total_loss}, Test Recon Loss: {total_recon_loss}")
 
-        with torch.no_grad():
-            val_pbar = tqdm(
-                val_dataloader, desc=f"Epoch {epoch+1}/{num_epochs} [Val]")
-            for data, labels in val_pbar:
-                data = data.to(device)
-                labels = labels.to(device)
+                x = x[:10, :].to(device)
+                x_hat = vq_model(x)[0]
 
-                # Forward pass
-                x_recon, vq_loss, indices = VAE(data, labels)
+                plot_images(pred=x_hat, original=x)
+                plt.savefig(f"{model_name}/{session}_vqvae_{epoch}.png")
+                plt.close()
 
-                # Accumulate losses
-                val_loss += vq_loss.item()
-
-                # Update progress bar
-                val_pbar.set_postfix({
-                    'loss': vq_loss.item() / data.size(0),
-                })
-
-        # Calculate average validation losses
-        avg_val_loss = val_loss / len(val_dataset)
-
-        # Record losses
-        train_losses.append((avg_train_loss))
-        val_losses.append((avg_val_loss))
-
-        # Update learning rate
-        scheduler.step()
-
-        # Print epoch summary
-        print(f"Epoch {epoch+1}/{num_epochs} - "
-              f"Train Loss: {avg_train_loss:.4f} | "
-              f"Val Loss: {avg_val_loss:.4f} | LR: {scheduler.get_last_lr()[0]:.6f}")
-
-        # Save best model
-        if avg_val_loss < best_val_loss:
-            best_val_loss = avg_val_loss
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': VAE.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict(),
-                'loss': avg_val_loss,
-            }, f'{model}/{session}_best_vqvae_model.pth')
-            print(
-                f"✓ Saved best model with validation loss: {avg_val_loss:.4f}")
-
-        # Save checkpoint every 10 epochs
-        if (epoch + 1) % 10 == 0:
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': VAE.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict(),
-                'loss': avg_val_loss,
-            }, f'{model}/{session}_epoch_{epoch+1}.pth')
-
-            # Visualize reconstructions and generated samples
-            # visualize_results(VAE, val_dataloader, device, epoch, kl_weight)
-
-    print("Training completed!")
-
-    # Plot loss curves
-    # plot_training_curves(train_losses, val_losses)
-
-    # Generate samples from the trained model
-    # print("Generating samples from trained model...")
-    # generate_samples(VAE, device, num_samples=10, num_classes=2)
+    torch.save(vq_model.state_dict(), f"{model_name}/{session}_vqvae.pth")
