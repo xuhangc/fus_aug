@@ -122,15 +122,8 @@ def train_stylegan_xl(session, batch_size=4, num_epochs=100, lr=0.002, device="c
             })
 
         # Save model checkpoints
-        torch.save(
-            {
-                "g": generator.state_dict(),
-                "d": discriminator.state_dict(),
-                "g_optim": g_optim.state_dict(),
-                "d_optim": d_optim.state_dict(),
-            },
-            f"StyleGANXL/checkpoint_{epoch+1}.pt"
-        )
+        torch.save(generator.state_dict(),
+                       f"StyleGANXL/{session}_generator_epoch_{epoch+1}.pth")
 
         # Generate and save sample images
         with torch.no_grad():
@@ -157,7 +150,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    session = 'S1'
+    session = 'S2'
 
     # Train the model
     train_stylegan_xl(

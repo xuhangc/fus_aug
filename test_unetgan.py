@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # Initialize the generator
     generator = UNetGAN(num_classes=2).to(device)
     
-    checkpoint = torch.load(f'UNetGAN/{session}_generator_epoch_100.pth', weights_only=True, map_location=device
+    checkpoint = torch.load(f'UNetGAN/{session}_generator_epoch_10.pth', weights_only=True, map_location=device
                             if torch.cuda.is_available() else 'cpu')
     generator.load_state_dict(checkpoint)
     generator.eval()

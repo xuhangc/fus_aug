@@ -169,7 +169,7 @@ if __name__ == "__main__":
     # Set random seed for reproducibility
     set_seed(42)
 
-    session = 'S1'
+    session = 'S2'
     model = 'CVAE'
 
     # Device setup

@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # Initialize the generator and discriminator
     generator = Generator(z_dim=z_dim, num_classes=num_classes).to(device)
     
-    checkpoint = torch.load(f'BIGGAN/{session}_generator_epoch_100.pth', weights_only=True, map_location=device
+    checkpoint = torch.load(f'BIGGAN/{session}_generator_epoch_10.pth', weights_only=True, map_location=device
                             if torch.cuda.is_available() else 'cpu')
     generator.load_state_dict(checkpoint)
     generator.eval()

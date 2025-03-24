@@ -33,7 +33,7 @@ def plot_images(pred, original=None):
 
 
 if __name__ == "__main__":
-    session = "S1"
+    session = "S2"
 
     model_name = "VAR"
     os.makedirs(model_name, exist_ok=True)
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         epoch_loss = 0
         epoch_recon_loss = 0
         for i, (x, c) in enumerate(tqdm(train_loader)):
-            x, c = x.to(device), c.to(device)
+            x, c = x.to(device), c.to(device).flatten()
             optimizer.zero_grad()
             xhat, r_maps, idxs, scales, q_loss = vq_model(x)
             recon_loss = F.mse_loss(xhat, x)
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         epoch_loss /= len(train_loader)
         epoch_recon_loss /= len(train_loader)
         print(f"Epoch: {epoch}, Loss: {epoch_loss}, Recon Loss: {epoch_recon_loss}")
-        torch.save(vq_model.state_dict(), f"{model_name}/{epoch}_vqvae.pth")
+        torch.save(vq_model.state_dict(), f"{model_name}/{session}_{epoch}_vqvae.pth")
 
         if epoch % 5 == 0:
             with torch.no_grad():
@@ -108,23 +108,23 @@ if __name__ == "__main__":
                 x_hat = vq_model(x)[0]
 
                 plot_images(pred=x_hat, original=x)
-                plt.savefig(f"{model_name}/vqvae_{epoch}.png")
+                plt.savefig(f"{model_name}/{session}_vqvae_{epoch}.png")
                 plt.close()
 
-    torch.save(vq_model.state_dict(), f"{model_name}/vqvae.pth")
+    torch.save(vq_model.state_dict(), f"{model_name}/{session}_vqvae.pth")
     del vq_model, optimizer, x, x_hat, train_loader, test_loader
     torch.cuda.empty_cache()
 
     print("=" * 10 + "Training VAR" + "=" * 10)
     vqvae = VQVAE(config)
-    vqvae.load_state_dict(torch.load(f"{model_name}/vqvae.pth"))
+    vqvae.load_state_dict(torch.load(f"{model_name}/{session}_vqvae.pth", weights_only=True))
     vqvae = vqvae.to(device)
     vqvae.eval()
 
     for param in vqvae.parameters():
         param.requires_grad = False
 
-    var_model = VAR(vqvae=vqvae, dim=128, n_heads=8, n_layers=3, patch_sizes=64, n_classes=2)
+    var_model = VAR(vqvae=vqvae, dim=128, n_heads=8, n_layers=3, patch_sizes=patch_sizes, n_classes=2)
     optimizer = torch.optim.AdamW(var_model.parameters(), lr=1e-3)
 
     print(f"VQVAE Parameters: {sum(p.numel() for p in vqvae.parameters())/1e6:.2f}M")
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     for epoch in range(100):
         epoch_loss = 0
         for i, (x, c) in enumerate(tqdm(train_loader)):
-            x, c = x.to(device), c.to(device)
+            x, c = x.to(device), c.to(device).flatten()
             optimizer.zero_grad()
 
             _, _, idxs_R_BL, scales_BlC, _ = vqvae(x)
@@ -154,16 +154,16 @@ if __name__ == "__main__":
 
         epoch_loss /= len(train_loader)
         print(f"Epoch: {epoch}, Loss: {epoch_loss}")
-        torch.save(var_model.state_dict(), f"{model_name}/{epoch}_var.pth")
+        torch.save(var_model.state_dict(), f"{model_name}/{session}_{epoch}_var.pth")
 
         if epoch % 5 == 0:
             with torch.no_grad():
 
-                cond = torch.arange(10).to(device)
+                cond = torch.arange(2).to(device)
                 out_B3HW = var_model.generate(cond, 0)
                 plot_images(pred=out_B3HW)
 
-                plt.savefig(f"{model_name}/var_{epoch}.png")
+                plt.savefig(f"{model_name}/{session}_var_{epoch}.png")
                 plt.close()
 
-    torch.save(var_model.state_dict(), f"{model_name}/var.pth")
+    torch.save(var_model.state_dict(), f"{model_name}/{session}_var.pth")

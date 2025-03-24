@@ -394,7 +394,7 @@ if __name__ == "__main__":
     ).to(device)
     
     # Load the trained model
-    checkpoint = torch.load(f'{model_name}/{session}_dit_model_checkpoint.pt', map_location=device)
+    checkpoint = torch.load(f'{model_name}/{session}_dit_model_checkpoint.pt', weights_only=True, map_location=device)
     generator.load_state_dict(checkpoint['model_state_dict'])
     generator.eval()
 

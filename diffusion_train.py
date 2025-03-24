@@ -75,23 +75,23 @@ def train_diffusion_model(
     model.to(device)
 
     # Create the noise scheduler
-    noise_scheduler = DDPMScheduler(
-        num_train_timesteps=1000,
-        beta_start=0.0001,
-        beta_end=0.02,
-        beta_schedule="linear",
-        clip_sample=False
-    )
-    # noise_scheduler = DDIMScheduler(
+    # noise_scheduler = DDPMScheduler(
     #     num_train_timesteps=1000,
     #     beta_start=0.0001,
     #     beta_end=0.02,
     #     beta_schedule="linear",
-    #     clip_sample=False,
-    #     set_alpha_to_one=False,
-    #     steps_offset=1,
-    #     prediction_type="epsilon"
+    #     clip_sample=False
     # )
+    noise_scheduler = DDIMScheduler(
+        num_train_timesteps=1000,
+        beta_start=0.0001,
+        beta_end=0.02,
+        beta_schedule="linear",
+        clip_sample=False,
+        set_alpha_to_one=False,
+        steps_offset=1,
+        prediction_type="epsilon"
+    )
 
     # Create the optimizer
     optimizer = torch.optim.AdamW(
@@ -343,7 +343,7 @@ def generate_images(
             timestep=t,
             sample=image,
             # Control stochasticity (0 = deterministic, 1 = stochastic)
-            eta=eta
+            # eta=eta
         ).prev_sample
 
     # Normalize image to [0, 1]
@@ -398,8 +398,8 @@ def main():
     # Set random seed for reproducibility
     set_seed(42)
 
-    session = "S1"
-    model = "DDPM"
+    session = "S2"
+    model = "DDIM"
 
     # Device setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -438,7 +438,7 @@ def main():
     augmented_images, augmented_labels = generate_augmented_dataset(
         model=model,
         noise_scheduler=noise_scheduler,
-        num_samples_per_class=500,
+        num_samples_per_class=5,
         device=device
     )
 

@@ -99,7 +99,7 @@ def train(dataloader, session):
 if __name__ == '__main__':
     set_seed(42)
 
-    session = 'S1'
+    session = 'S2'
 
     os.makedirs('BIGGAN', exist_ok=True)
 

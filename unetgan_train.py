@@ -99,7 +99,7 @@ def train_unetgan(model, train_loader, session, num_epochs=100, lr=0.0002, beta1
 if __name__ == '__main__':
     set_seed(42)
 
-    session = 'S1'
+    session = 'S2'
 
     os.makedirs('UNetGAN', exist_ok=True)
 

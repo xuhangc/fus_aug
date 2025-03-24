@@ -7,6 +7,58 @@ import numpy as np
 from typing import List
 
 
+class ConditionNet(nn.Module):
+    def __init__(self, in_ch=3, nf=32):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, nf, 7, 2, 1)
+        self.conv2 = nn.Conv2d(nf, nf, 3, 2, 1)
+        self.conv3 = nn.Conv2d(nf, nf, 3, 2, 1)
+        self.relu = nn.ReLU(inplace=True)
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+
+    def forward(self, x):
+        out = self.relu(self.conv1(x))
+        out = self.relu(self.conv2(out))
+        out = self.relu(self.conv3(out))
+        cond = self.avg_pool(out)
+        return cond
+
+
+class GFM(nn.Module):
+    def __init__(self, cond_nf, in_nf, base_nf):
+        super().__init__()
+        self.mlp_scale = nn.Conv2d(cond_nf, base_nf, 1, 1, 0)
+        self.mlp_shift = nn.Conv2d(cond_nf, base_nf, 1, 1, 0)
+        self.conv = nn.Conv2d(in_nf, base_nf, 1, 1, 0)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x, cond):
+        feat = self.conv(x)
+        scale = self.mlp_scale(cond)
+        shift = self.mlp_shift(cond)
+        out = feat * scale + shift + feat
+        out = self.relu(out)
+        return out
+
+
+class EnhanceNet(nn.Module):
+    def __init__(self, in_ch=1,
+                 out_ch=1,
+                 base_nf=64,
+                 cond_nf=32):
+        super().__init__()
+        self.condnet = ConditionNet(in_ch, cond_nf)
+        self.gfm1 = GFM(cond_nf, in_ch, base_nf)
+        self.gfm2 = GFM(cond_nf, base_nf, base_nf)
+        self.gfm3 = GFM(cond_nf, base_nf, out_ch)
+    def forward(self, x):
+        cond = self.condnet(x)
+        out = self.gfm1(x, cond)
+        out = self.gfm2(out, cond)
+        out = self.gfm3(out, cond)
+        return out
+    
+
 class Phi(nn.Module):
     def __init__(self, dim, residual_ratio: float = 0.5):
         super().__init__()
@@ -315,6 +367,8 @@ class Decoder(nn.Module):
         self.norm_out = nn.GroupNorm(num_groups=32, num_channels=block_in, eps=1e-6, affine=True)
         self.conv_out = nn.Conv2d(block_in, out_ch, kernel_size=3, stride=1, padding=1)
 
+        self.final = EnhanceNet()
+
     def forward(self, z: Tensor) -> Tensor:
         h = self.conv_in(z)
         h = self.mid.block_1(h)
@@ -331,6 +385,7 @@ class Decoder(nn.Module):
         h = self.norm_out(h)
         h = swish(h)
         h = self.conv_out(h)
+        h = self.final(h)
         return h
 
 
@@ -530,6 +585,65 @@ class FinalLayer(nn.Module):
         return self.fc(x_BLC)
 
 
+class SmoothLayer(nn.Module):
+    def __init__(self, dim, mlp_ratio=4.0, drop=0.0, window_size=8):
+        super().__init__()
+        self.dim = dim
+        self.window_size = window_size
+        mlp_hidden_dim = int(dim * mlp_ratio)
+        
+        self.mlp = nn.Sequential(
+            nn.Linear(dim, mlp_hidden_dim),
+            nn.GELU(),
+            nn.Dropout(drop),
+            nn.Linear(mlp_hidden_dim, dim),
+            nn.Dropout(drop)
+        )
+        
+        self.layer_norm = nn.LayerNorm(dim)
+        
+    def forward(self, x):
+        B, L, C = x.shape
+        shortcut = x
+        
+        # Layer Norm
+        x = self.layer_norm(x)
+        
+        # Handle the case where sequence length is not divisible by window_size
+        # We'll process full windows and then handle the remainder separately
+        
+        # Process full windows
+        num_full_windows = L // self.window_size
+        if num_full_windows > 0:
+            # Process the portion that fits into full windows
+            full_len = num_full_windows * self.window_size
+            x_full = x[:, :full_len, :]
+            
+            # Reshape to windows
+            x_windows = x_full.view(B, num_full_windows, self.window_size, C)
+            x_windows = x_windows.reshape(B * num_full_windows, self.window_size, C)
+            
+            # Apply MLP
+            x_windows = self.mlp(x_windows)
+            
+            # Reshape back
+            x_full = x_windows.view(B, num_full_windows, self.window_size, C)
+            x_full = x_full.reshape(B, full_len, C)
+            
+            # If there's a remainder, process it separately
+            if full_len < L:
+                x_remainder = x[:, full_len:, :]
+                x_remainder = self.mlp(x_remainder)
+                x = torch.cat([x_full, x_remainder], dim=1)
+            else:
+                x = x_full
+        else:
+            # If sequence is shorter than window_size, just apply MLP directly
+            x = self.mlp(x)
+        
+        return shortcut + x
+    
+
 class VAR(nn.Module):
     def __init__(self, vqvae: VQVAE, dim: int, n_heads: int, n_layers: int, patch_sizes: tuple, n_classes: int = 2, cls_dropout: float = 0.1):
         super().__init__()
@@ -551,13 +665,16 @@ class VAR(nn.Module):
         self.layers = nn.ModuleList([TransformerBlock(dim, n_heads) for _ in range(n_layers)])
         self.vocab_size = vqvae.config.vocab_size
         self.final_layer = FinalLayer(dim, self.vocab_size)
+        self.smooth = SmoothLayer(self.vocab_size, mlp_ratio=4.0, drop=0.0)
         self.num_classes = n_classes
 
     def predict_logits(self, x_BlD, cond_BD: torch.Tensor) -> torch.Tensor:
         attn_mask = self.attn_mask.to(x_BlD.device)[:, : x_BlD.shape[1], : x_BlD.shape[1]]
         for layer in self.layers:
             x_BlD = layer(x_BlD, cond_BD, attn_mask, self.freqs_cis.to(x_BlD.device))
-        return self.final_layer(x_BlD)
+        x_BlD = self.final_layer(x_BlD)
+        x_BlD = self.smooth(x_BlD)
+        return x_BlD
 
     def forward(self, x_BlC: torch.Tensor, cond: torch.LongTensor) -> torch.Tensor:
         B, _, _ = x_BlC.shape  # for training, l = L - (patch_size[0]) = L - 1
@@ -616,6 +733,7 @@ class VAR(nn.Module):
 
 
 if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     with torch.no_grad():
         patch_sizes = [1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 32]
         max_len = sum(p**2 for p in patch_sizes)
@@ -630,12 +748,12 @@ if __name__ == "__main__":
             vocab_size=8192,
             patch_sizes=patch_sizes,
         )
-        model = VQVAE(config)
-        var = VAR(model, 128, 8, 3, patch_sizes)
-        x = torch.randn(1, max_len - 1, var.latent_dim)
-        cond = torch.randint(0, 2, (1,))
+        model = VQVAE(config).to(device)
+        var = VAR(model, 128, 8, 3, patch_sizes).to(device)
+        x = torch.randn(1, max_len - 1, var.latent_dim).to(device)
+        cond = torch.randint(0, 2, (1,)).to(device)
         out = var(x, cond)
         assert out.shape == (1, max_len, var.vocab_size)
-        out = var.generate(cond, 2)
+        out = var.generate(cond, 0)
         print(out.shape)
         print("Success")

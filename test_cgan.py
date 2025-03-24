@@ -6,7 +6,6 @@ from tqdm import tqdm
 from models.cgan import Generator
 from data import NPZDataLoader
 
-
 # Set random seeds for reproducibility
 def set_seed(seed=3407):
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -49,7 +48,7 @@ if __name__ == "__main__":
     generator = Generator(image_size=image_size, channels=channels,
                          num_classes=num_classes, latent_dim=latent_dim).to(device)
     
-    checkpoint = torch.load(f'CGAN/{session}_generator_epoch_100.pth', weights_only=True, map_location=device
+    checkpoint = torch.load(f'CGAN/{session}_generator_epoch_10.pth', weights_only=True, map_location=device
                            if torch.cuda.is_available() else 'cpu')
     generator.load_state_dict(checkpoint)
     generator.eval()
