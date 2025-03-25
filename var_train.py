@@ -9,10 +9,6 @@ from tqdm import tqdm
 from models.var import VQVAE, VAR, VQVAEConfig
 
 
-
-
-
-
 def plot_images(pred, original=None):
     n = pred.size(0)
     pred = pred * 0.5 + 0.5
@@ -33,7 +29,7 @@ def plot_images(pred, original=None):
 
 
 if __name__ == "__main__":
-    session = "S2"
+    session = "S1"
 
     model_name = "VAR"
     os.makedirs(model_name, exist_ok=True)
@@ -68,7 +64,10 @@ if __name__ == "__main__":
         test_dataset, batch_size=1, shuffle=False, num_workers=16)
     
     vq_model = vq_model.to(device)
-    for epoch in range(100):
+
+    temp_loss = 100
+    best_vqvae_checkpoint = ""
+    for epoch in range(200):
         epoch_loss = 0
         epoch_recon_loss = 0
         for i, (x, c) in enumerate(tqdm(train_loader)):
@@ -87,7 +86,7 @@ if __name__ == "__main__":
         print(f"Epoch: {epoch}, Loss: {epoch_loss}, Recon Loss: {epoch_recon_loss}")
         torch.save(vq_model.state_dict(), f"{model_name}/{session}_{epoch}_vqvae.pth")
 
-        if epoch % 5 == 0:
+        if epoch % 1 == 0:
             with torch.no_grad():
                 total_loss = 0
                 total_recon_loss = 0
@@ -102,22 +101,30 @@ if __name__ == "__main__":
                 total_loss /= len(test_loader)
                 total_recon_loss /= len(test_loader)
 
+                if total_recon_loss < temp_loss:
+                    temp_loss = total_recon_loss
+                    torch.save(vq_model.state_dict(), f"{model_name}/{session}_{epoch}_vqvae.pth")
+
+                    best_vqvae_checkpoint = f"{model_name}/{session}_{epoch}_vqvae.pth"
+
+                    x = x[:10, :].to(device)
+                    x_hat = vq_model(x)[0]
+
+                    plot_images(pred=x_hat, original=x)
+                    plt.savefig(f"{model_name}/{session}_vqvae_{epoch}.png")
+                    plt.close()
+
                 print(f"Epoch: {epoch}, Test Loss: {total_loss}, Test Recon Loss: {total_recon_loss}")
 
-                x = x[:10, :].to(device)
-                x_hat = vq_model(x)[0]
 
-                plot_images(pred=x_hat, original=x)
-                plt.savefig(f"{model_name}/{session}_vqvae_{epoch}.png")
-                plt.close()
-
-    torch.save(vq_model.state_dict(), f"{model_name}/{session}_vqvae.pth")
     del vq_model, optimizer, x, x_hat, train_loader, test_loader
     torch.cuda.empty_cache()
 
+    temp_loss = 100
+
     print("=" * 10 + "Training VAR" + "=" * 10)
     vqvae = VQVAE(config)
-    vqvae.load_state_dict(torch.load(f"{model_name}/{session}_vqvae.pth", weights_only=True))
+    vqvae.load_state_dict(torch.load(best_vqvae_checkpoint, weights_only=True))
     vqvae = vqvae.to(device)
     vqvae.eval()
 
@@ -135,7 +142,8 @@ if __name__ == "__main__":
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=1, shuffle=False, num_workers=16)
     var_model = var_model.to(device)
-    for epoch in range(100):
+    
+    for epoch in range(200):
         epoch_loss = 0
         for i, (x, c) in enumerate(tqdm(train_loader)):
             x, c = x.to(device), c.to(device).flatten()
@@ -154,16 +162,25 @@ if __name__ == "__main__":
 
         epoch_loss /= len(train_loader)
         print(f"Epoch: {epoch}, Loss: {epoch_loss}")
-        torch.save(var_model.state_dict(), f"{model_name}/{session}_{epoch}_var.pth")
 
-        if epoch % 5 == 0:
+        if epoch % 1 == 0:
             with torch.no_grad():
+                total_loss = 0
 
-                cond = torch.arange(2).to(device)
-                out_B3HW = var_model.generate(cond, 0)
-                plot_images(pred=out_B3HW)
+                for i, (x, c) in enumerate(tqdm(test_loader)):
+                    x, c = x.to(device), c.to(device).flatten()
+                    out_B3HW = var_model.generate(c, 0)
+                    recon_loss = F.mse_loss(xhat, x)
+                    loss = recon_loss
+                    total_loss += loss.item()
 
-                plt.savefig(f"{model_name}/{session}_var_{epoch}.png")
-                plt.close()
+                if total_loss < temp_loss:
+                    temp_loss = total_loss
+                    torch.save(var_model.state_dict(), f"{model_name}/{session}_{epoch}_var.pth")
 
-    torch.save(var_model.state_dict(), f"{model_name}/{session}_var.pth")
+                    cond = torch.arange(2).to(device)
+                    out_B3HW = var_model.generate(cond, 0)
+                    plot_images(pred=out_B3HW)
+
+                    plt.savefig(f"{model_name}/{session}_var_{epoch}.png")
+                    plt.close()
