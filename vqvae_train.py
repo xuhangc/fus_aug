@@ -63,7 +63,9 @@ if __name__ == "__main__":
         test_dataset, batch_size=1, shuffle=False, num_workers=16)
     
     vq_model = vq_model.to(device)
-    for epoch in range(100):
+
+    temp_loss = 100
+    for epoch in range(200):
         epoch_loss = 0
         epoch_recon_loss = 0
         for i, (x, c) in enumerate(tqdm(train_loader)):
@@ -80,9 +82,8 @@ if __name__ == "__main__":
         epoch_loss /= len(train_loader)
         epoch_recon_loss /= len(train_loader)
         print(f"Epoch: {epoch}, Loss: {epoch_loss}, Recon Loss: {epoch_recon_loss}")
-        torch.save(vq_model.state_dict(), f"{model_name}/{session}_{epoch}_vqvae.pth")
-
-        if epoch % 5 == 0:
+        
+        if epoch % 1 == 0:
             with torch.no_grad():
                 total_loss = 0
                 total_recon_loss = 0
@@ -99,11 +100,13 @@ if __name__ == "__main__":
 
                 print(f"Epoch: {epoch}, Test Loss: {total_loss}, Test Recon Loss: {total_recon_loss}")
 
-                x = x[:10, :].to(device)
-                x_hat = vq_model(x)[0]
+                if total_recon_loss < temp_loss:
+                    temp_loss = total_recon_loss
+                    torch.save(vq_model.state_dict(), f"{model_name}/{session}_{epoch}_vqvae.pth")
 
-                plot_images(pred=x_hat, original=x)
-                plt.savefig(f"{model_name}/{session}_vqvae_{epoch}.png")
-                plt.close()
+                    x = x[:10, :].to(device)
+                    x_hat = vq_model(x)[0]
 
-    torch.save(vq_model.state_dict(), f"{model_name}/{session}_vqvae.pth")
+                    plot_images(pred=x_hat, original=x)
+                    plt.savefig(f"{model_name}/{session}_vqvae_{epoch}.png")
+                    plt.close()
