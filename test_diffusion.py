@@ -130,12 +130,8 @@ if __name__ == "__main__":
                     sample=image
                 ).prev_sample
             
-            # Process the image for saving
-            # Normalize to [0, 1] range and then to [-1, 1] to match other models
-            fake_imgs = (image.clamp(-1, 1) + 1) / 2
-            
             # Process the generated data to match the format in test_biggan.py
-            fake_imgs = fake_imgs.squeeze(0).permute(1, 2, 0)
+            fake_imgs = image.squeeze(0).permute(1, 2, 0)
             labels = labels.permute(1, 0)
             
             data_list.append(fake_imgs)
