@@ -1,7 +1,6 @@
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-import cv2
 
 
 class NPZDataLoader(Dataset):
@@ -20,16 +19,18 @@ class NPZDataLoader(Dataset):
     def __getitem__(self, index):
         index_ = index % self.sizex
 
-        fus = cv2.resize(self.fus_files[index_], (128, 128))
+        fus = self.fus_files[index_]
+        fus = fus[:128, :]
         lab = self.lab_files[index_]
 
         fus_tensor = torch.from_numpy(fus).float()
         lab_tensor = torch.from_numpy(lab).long()
 
-        min_vals = fus_tensor.min(dim=0, keepdim=True)[0]
-        max_vals = fus_tensor.max(dim=0, keepdim=True)[0]
+        # min_vals = torch.min(fus_tensor)
+        max_vals = torch.max(fus_tensor)
 
-        fus_tensor = (fus_tensor - min_vals) / (max_vals - min_vals + 1e-8)
+        # fus_tensor = (fus_tensor - min_vals) / (max_vals - min_vals + 1e-8)
+        fus_tensor /= max_vals
 
         return fus_tensor.unsqueeze(0), lab_tensor
 
