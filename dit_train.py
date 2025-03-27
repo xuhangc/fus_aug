@@ -521,7 +521,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    session = "S2"
+    session = "S1"
     
     # Initialize dataloader
     train_dataset = NPZDataLoader(f'{session}_train.npz')  # Replace with your actual path
@@ -532,7 +532,7 @@ if __name__ == "__main__":
         in_channels=1,           # Grayscale images
         out_channels=1,          # Predicting noise
         model_channels=64,       # Base channels
-        num_res_blocks=2,        # Number of residual blocks per level
+        num_res_blocks=8,        # Number of residual blocks per level
         attention_resolutions=(8, 16),  # Where to apply attention
         channel_mult=(1, 2, 4, 8),     # Channel multipliers
         num_heads=4,             # Number of attention heads

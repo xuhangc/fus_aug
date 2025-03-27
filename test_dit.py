@@ -386,7 +386,7 @@ if __name__ == "__main__":
         in_channels=1,
         out_channels=1,
         model_channels=64,
-        num_res_blocks=2,
+        num_res_blocks=8,
         attention_resolutions=(8, 16),
         channel_mult=(1, 2, 4, 8),
         num_heads=4,
