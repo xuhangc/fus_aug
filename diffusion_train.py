@@ -66,8 +66,8 @@ def train_diffusion_model(
         in_channels=2,
         # Number of output channels (predicting noise for the image)
         out_channels=1,
-        layers_per_block=2,
-        block_out_channels=(128, 256, 512, 512),
+        layers_per_block=4,
+        block_out_channels=(64, 128, 256, 512),
         down_block_types=("DownBlock2D", "DownBlock2D",
                           "DownBlock2D", "DownBlock2D"),
         up_block_types=("UpBlock2D", "UpBlock2D", "UpBlock2D", "UpBlock2D"),
@@ -401,8 +401,8 @@ def main():
     # Set random seed for reproducibility
     set_seed(42)
 
-    session = "S1"
-    model = "DDPM"
+    session = "S2"
+    model = "DDIM"
 
     # Device setup
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
