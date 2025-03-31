@@ -47,8 +47,8 @@ if __name__ == "__main__":
     # Set random seed for reproducibility
     set_seed(42)
 
-    session = 'S2'
-    model = "DDIM"  # Using model as the variable name to match test_biggan.py
+    session = 'S1'
+    model = "DDPM"  # Using model as the variable name to match test_biggan.py
 
     val_dataset = NPZDataLoader(f'{session}_test.npz')
 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         in_channels=2,
         out_channels=1,
         layers_per_block=4,
-        block_out_channels=(64, 128, 256, 512),
+        block_out_channels=(128, 256, 512, 512),
         down_block_types=("DownBlock2D", "DownBlock2D", "DownBlock2D", "DownBlock2D"),
         up_block_types=("UpBlock2D", "UpBlock2D", "UpBlock2D", "UpBlock2D"),
     )

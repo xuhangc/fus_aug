@@ -372,7 +372,7 @@ if __name__ == "__main__":
     # Set random seed for reproducibility
     set_seed(42)
 
-    session = 'S2'
+    session = 'S1'
     model_name = "DiT"  # Diffusion Transformer
 
     val_dataset = NPZDataLoader(f'{session}_test.npz')
