@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from data import NPZDataLoader
 from tqdm import tqdm
 
+from torchsampler import ImbalancedDatasetSampler
+
 from models.vqvae import VQVAE, VQVAEConfig
 
 def plot_images(pred, original=None):
@@ -44,8 +46,8 @@ if __name__ == "__main__":
         in_channels=1,
         dim=128,
         ch_mult=[1, 2, 4],
-        num_res_blocks=2,
-        z_channels=64,
+        num_res_blocks=8,
+        z_channels=128,
         out_ch=1,
         vocab_size=8192,
         patch_sizes=patch_sizes,
@@ -58,14 +60,14 @@ if __name__ == "__main__":
     test_dataset = NPZDataLoader(f'{session}_test.npz')
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=2, shuffle=True, num_workers=16)
+        train_dataset, batch_size=2, num_workers=16, sampler=ImbalancedDatasetSampler(train_dataset))
     test_loader = torch.utils.data.DataLoader(
         test_dataset, batch_size=1, shuffle=False, num_workers=16)
     
     vq_model = vq_model.to(device)
 
     temp_loss = 100
-    for epoch in range(200):
+    for epoch in range(500):
         epoch_loss = 0
         epoch_recon_loss = 0
         for i, (x, c) in enumerate(tqdm(train_loader)):

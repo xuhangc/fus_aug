@@ -33,6 +33,19 @@ class NPZDataLoader(Dataset):
         fus_tensor /= max_vals
 
         return fus_tensor.unsqueeze(0), lab_tensor
+    
+    def get_labels(self):
+        labels = []
+        for lab_name in self.lab_files:
+            label = None
+            if lab_name == 0:
+                label = 0
+            else:
+                label = 1
+
+            labels.append(label)
+
+        return labels
 
 
 # train_dataset = NPZDataLoader('S1_train.npz')
