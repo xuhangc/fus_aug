@@ -410,7 +410,7 @@ if __name__ == "__main__":
     os.makedirs(f"{model_name}", exist_ok=True)
 
     # Set the number of inference steps
-    inference_steps = 100
+    inference_steps = 1000
     diffusion.timesteps = inference_steps
 
     data_list = []
