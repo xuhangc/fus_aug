@@ -206,13 +206,26 @@ class UNet(nn.Module):
         # 上采样部分
         self.ups = nn.ModuleList([])
         
+        # 创建一个副本用于上采样部分，避免原始列表被耗尽
+        up_block_chans = down_block_chans.copy()
+        
         for level, mult in reversed(list(enumerate(channel_mult))):
             out_ch = model_channels * mult
             
-            for _ in range(num_res_blocks + 1):
-                self.ups.append(ResidualBlock(
-                    in_ch + down_block_chans.pop(), out_ch, self.time_dim, dropout
-                ))
+            # 确保我们有足够的跳跃连接
+            for i in range(num_res_blocks + 1):
+                # 检查是否还有跳跃连接可用
+                if len(up_block_chans) > 0:
+                    skip_ch = up_block_chans.pop()
+                    self.ups.append(ResidualBlock(
+                        in_ch + skip_ch, out_ch, self.time_dim, dropout
+                    ))
+                else:
+                    # 如果没有跳跃连接，就不添加
+                    self.ups.append(ResidualBlock(
+                        in_ch, out_ch, self.time_dim, dropout
+                    ))
+                
                 in_ch = out_ch
                 
                 # 添加注意力层
@@ -257,8 +270,9 @@ class UNet(nn.Module):
         # 上采样
         for module in self.ups:
             if isinstance(module, ResidualBlock):
-                # 添加跳跃连接
-                h = torch.cat([h, hs.pop()], dim=1)
+                # 添加跳跃连接，如果还有的话
+                if len(hs) > 0:
+                    h = torch.cat([h, hs.pop()], dim=1)
                 h = module(h, t_emb)
             else:
                 h = module(h)
