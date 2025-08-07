@@ -119,7 +119,7 @@ if __name__ == '__main__':
         print(f"LDM Epoch {epoch+1}, Loss: {epoch_loss / len(train_loader):.4f}")
 
         # Generate and save samples
-        if (epoch + 1) % 10 == 0:
+        if (epoch + 1) % 1 == 0:
             ldm.eval()
             with torch.no_grad():
                 # Generate 4 samples for each class

@@ -411,7 +411,7 @@ class LatentDiffusionModel(nn.Module):
     @torch.no_grad()
     def sample(self, num_samples, class_labels, device):
         """Sampling from the model (DDPM reverse process)"""
-        shape = (num_samples, self.unet.in_channels, 16, 16) # Latent shape
+        shape = (num_samples, self.unet.in_channels, 32, 32) # Latent shape
         img = torch.randn(shape, device=device)
         
         for i in tqdm(reversed(range(0, self.timesteps)), desc="Sampling", total=self.timesteps):
